@@ -45,6 +45,7 @@ Thumbs.db
 
 # Environment files
 .env*
+!.env.example
 
 # SQLite database
 /data

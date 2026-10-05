@@ -1,5 +1,8 @@
 import { defineEventHandler } from 'h3';
 import { defineCachedFunction } from 'nitropack/runtime';
+import { withSpan } from '../../utils/tracing';
+import { log } from '../../utils/logger';
+import { jikanLatencyHistogram, apiRequestCounter } from '../../utils/metrics';
 
 interface EdgeResponse<T> {
   data: T;
@@ -33,8 +36,16 @@ const RECOMMENDATION_COUNT = 8;
 const FOUR_HOURS_IN_SECONDS = 60 * 60 * 4;
 
 async function fetchAnimeApi<T>(path: string): Promise<T> {
+  const start = performance.now();
   const response = await fetch(`${ANIME_API}${path}`);
-  if (!response.ok) throw new Error(`jikan-edge responded with ${response.status}`);
+  const durationMs = performance.now() - start;
+
+  jikanLatencyHistogram.record(durationMs, { 'http.url': path });
+
+  if (!response.ok) {
+    log('error', `Jikan API request failed: ${response.status}`, { 'http.url': path, 'http.status_code': response.status });
+    throw new Error(`jikan-edge responded with ${response.status}`);
+  }
   const result = await response.json() as EdgeResponse<T>;
   return result.data;
 }
@@ -42,20 +53,39 @@ async function fetchAnimeApi<T>(path: string): Promise<T> {
 // Each list hits jikan-edge at most once every 4 hours. A failed fetch throws and isn't cached, so it's
 // retried on the next request; once 4 hours have passed the stale list is served while a fresh one loads.
 const getTopAnime = defineCachedFunction(
-  () => fetchAnimeApi<AnimeEntry[]>('/top/anime'),
+  () => withSpan('jikan.fetchTopAnime', async (span) => {
+    span.setAttribute('http.url', '/top/anime');
+    const data = await fetchAnimeApi<AnimeEntry[]>('/top/anime');
+    span.setAttribute('anime.count', data.length);
+    return data;
+  }),
   { name: 'anime-feed', getKey: () => 'top-anime', maxAge: FOUR_HOURS_IN_SECONDS },
 );
 
 const getRecommendations = defineCachedFunction(
-  () => fetchAnimeApi<AnimeRecommendation[]>('/recommendations/anime'),
+  () => withSpan('jikan.fetchRecommendations', async (span) => {
+    span.setAttribute('http.url', '/recommendations/anime');
+    const data = await fetchAnimeApi<AnimeRecommendation[]>('/recommendations/anime');
+    span.setAttribute('anime.count', data.length);
+    return data;
+  }),
   { name: 'anime-feed', getKey: () => 'recommendations', maxAge: FOUR_HOURS_IN_SECONDS },
 );
 
 export default defineEventHandler(async () => {
+  apiRequestCounter.add(1, { 'http.route': '/api/anime-feed' });
+
   const [topResult, recommendationsResult] = await Promise.allSettled([
     getTopAnime(),
     getRecommendations(),
   ]);
+
+  if (topResult.status === 'rejected') {
+    log('error', 'Failed to fetch top anime from Jikan', { error: String(topResult.reason) });
+  }
+  if (recommendationsResult.status === 'rejected') {
+    log('error', 'Failed to fetch recommendations from Jikan', { error: String(recommendationsResult.reason) });
+  }
 
   return {
     topAnime: topResult.status === 'fulfilled'
