@@ -1,9 +1,24 @@
 # Runs the app and GlitchTip, a lightweight Sentry-compatible server, for local development.
-# GlitchTip accepts events from the Sentry SDKs unchanged. See README.md for first-time setup.
+# GlitchTip accepts events from the Sentry SDKs unchanged. See README.md for setup.
 #
 # Everything is bound to 127.0.0.1 and capped on memory: about 1.6 GB in total at the limits.
+#
+# The glitchtip-seed service sets up a shared dev login, project, DSN key and source map token on
+# first start (see docker/glitchtip/seed.py), so nobody has to configure GlitchTip by hand. These
+# values are for local development only.
 
 name: analog-anime
+
+x-glitchtip-environment: &glitchtip-environment
+  DATABASE_URL: postgres://postgres:postgres@glitchtip-postgres:5432/postgres
+  SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-local-dev-only-not-for-production}
+  GLITCHTIP_DOMAIN: http://localhost:8000
+  DEFAULT_FROM_EMAIL: glitchtip@localhost
+  EMAIL_URL: consolemail://
+  # Postgres serves as the task queue and cache instead of Valkey, to save memory.
+  VALKEY_URL: ""
+  GLITCHTIP_ENABLE_UPTIME: "False"
+  GLITCHTIP_ENABLE_LOGS: "False"
 
 services:
   app:
@@ -12,16 +27,17 @@ services:
       # Lets the build reach GlitchTip on localhost:8000 to upload source maps.
       network: host
       args:
-        VITE_SENTRY_DSN: ${SENTRY_DSN:-}
+        # The DSN key here must match SEED_DSN_PUBLIC_KEY on the glitchtip-seed service.
+        VITE_SENTRY_DSN: ${SENTRY_DSN:-http://5aa55d3cf63a49898c57b1deee47f54f@localhost:8000/1}
         SENTRY_URL: ${SENTRY_URL:-http://localhost:8000}
-        SENTRY_ORG: ${SENTRY_ORG:-}
-        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+        SENTRY_ORG: ${SENTRY_ORG:-analog-anime}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-analog-anime}
       secrets:
         - sentry_auth_token
     environment:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
       BETTER_AUTH_URL: http://localhost:3000
-      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-http://5aa55d3cf63a49898c57b1deee47f54f@localhost:8000/1}
     # The DSN GlitchTip shows uses localhost:8000, which is right for the browser. Inside this
     # container GlitchTip is at glitchtip:8000, so the server's copy is rewritten before starting.
     command:
@@ -38,27 +54,41 @@ services:
     restart: unless-stopped
 
   glitchtip:
-    image: glitchtip/glitchtip:6
+    # Pinned so upgrades are deliberate: seed.py uses GlitchTip's internal models.
+    image: glitchtip/glitchtip:6.2.6
     depends_on:
       - glitchtip-postgres
     environment:
-      DATABASE_URL: postgres://postgres:postgres@glitchtip-postgres:5432/postgres
-      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-local-dev-only-not-for-production}
-      GLITCHTIP_DOMAIN: http://localhost:8000
-      DEFAULT_FROM_EMAIL: glitchtip@localhost
-      EMAIL_URL: consolemail://
-      # Web server and background worker in one process, with Postgres as the task queue and
-      # cache instead of Valkey. Features this app doesn't use are switched off to save memory.
+      <<: *glitchtip-environment
+      # Web server and background worker in one process, to save memory.
       SERVER_ROLE: all_in_one
-      VALKEY_URL: ""
-      GLITCHTIP_ENABLE_UPTIME: "False"
-      GLITCHTIP_ENABLE_LOGS: "False"
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - glitchtip-uploads:/code/uploads
     mem_limit: 768m
     restart: unless-stopped
+
+  glitchtip-seed:
+    image: glitchtip/glitchtip:6.2.6
+    depends_on:
+      - glitchtip
+    environment:
+      <<: *glitchtip-environment
+      SEED_DSN_PUBLIC_KEY: 5aa55d3cf63a49898c57b1deee47f54f
+    secrets:
+      - sentry_auth_token
+    volumes:
+      - ./docker/glitchtip/seed.py:/seed/seed.py:ro
+    # Waits for GlitchTip to finish its database migrations, then seeds and exits.
+    command:
+      - sh
+      - -c
+      - >-
+        until ./manage.py migrate --check >/dev/null 2>&1; do sleep 2; done;
+        ./manage.py shell < /seed/seed.py
+    mem_limit: 384m
+    restart: "no"
 
   glitchtip-postgres:
     image: postgres:18
@@ -70,8 +100,9 @@ services:
     restart: unless-stopped
 
 secrets:
+  # Shared local-dev token for source map uploads. glitchtip-seed creates it in GlitchTip.
   sentry_auth_token:
-    environment: SENTRY_AUTH_TOKEN
+    file: ./docker/glitchtip/dev-auth-token
 
 volumes:
   app-data:

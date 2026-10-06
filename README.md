@@ -36,25 +36,33 @@ Run `npm run build` to build the client/server project. The client build artifac
 | `app` | http://localhost:3000 | 512 MB |
 | `glitchtip` | http://localhost:8000 | 768 MB |
 | `glitchtip-postgres` | (internal) | 384 MB |
+| `glitchtip-seed` | Runs once on start, then exits | 384 MB |
 
 Ports are bound to `127.0.0.1`, so nothing is reachable from other machines.
 
 ### First-time setup
 
 1. Copy `.env.example` to `.env` and set `BETTER_AUTH_SECRET`.
-2. Start GlitchTip on its own: `docker compose up -d glitchtip`
-3. Open http://localhost:8000, register an account, then create an organization and a project (platform: Angular).
-4. Copy the project's DSN into `.env` as `SENTRY_DSN`. It looks like `http://<key>@localhost:8000/1`.
-5. For readable browser stack traces, create an auth token under **Profile → Auth Tokens** with the `project:releases`, `project:read` and `org:read` scopes, and set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` and `SENTRY_PROJECT` (the organization and project slugs from GlitchTip's URLs). Without a token, the build skips the upload and generates no source maps.
-6. Build and start the app: `docker compose up -d --build app`
+2. Start GlitchTip and seed it: `docker compose up -d glitchtip-seed`
+3. Build and start the app: `docker compose up -d --build`
 
-The browser DSN is baked in when the image is built, so rerun step 6 after changing `SENTRY_DSN`. The build uses the host network so it can upload source maps to GlitchTip on `localhost:8000`, and the auth token is passed as a build secret, so it isn't stored in the image.
+There's nothing to configure in GlitchTip. On first start, `glitchtip-seed` (`docker/glitchtip/seed.py`) creates:
+
+- A shared login for http://localhost:8000: **`dev@analog-anime.com`** / **`Pa$$word123`**
+- The `analog-anime` organization and project, with a fixed DSN key that `compose.yaml` uses by default
+- A fixed auth token (`docker/glitchtip/dev-auth-token`) that the image build uses to upload source maps
+
+These credentials are committed on purpose. They're only for local development: GlitchTip is bound to `127.0.0.1` and holds only local test data. Never reuse them anywhere else.
+
+Step 2 comes first because source maps are uploaded while the app image builds, so GlitchTip has to be running and seeded by then. If you build first anyway, the app still works, but browser stack traces stay minified until you rebuild.
 
 ### Day to day
 
 - `docker compose up -d` starts everything; `docker compose up -d --build app` rebuilds the app after code changes.
 - `docker compose logs -f app` follows the server logs.
-- `docker compose down` stops everything. Accounts, favorites and GlitchTip data are kept in named volumes; `docker compose down -v` deletes them.
+- `docker compose down` stops everything. Accounts, favorites and GlitchTip data are kept in named volumes; `docker compose down -v` deletes them, and the next start seeds GlitchTip again.
+
+The browser DSN is baked in when the image is built. To report to a different Sentry or GlitchTip project, set `SENTRY_DSN` (and `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_URL` for source maps) in `.env` and rebuild.
 
 ## Test
 
