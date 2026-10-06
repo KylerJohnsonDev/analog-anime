@@ -1,0 +1,79 @@
+# Runs the app and GlitchTip, a lightweight Sentry-compatible server, for local development.
+# GlitchTip accepts events from the Sentry SDKs unchanged. See README.md for first-time setup.
+#
+# Everything is bound to 127.0.0.1 and capped on memory: about 1.6 GB in total at the limits.
+
+name: analog-anime
+
+services:
+  app:
+    build:
+      context: .
+      # Lets the build reach GlitchTip on localhost:8000 to upload source maps.
+      network: host
+      args:
+        VITE_SENTRY_DSN: ${SENTRY_DSN:-}
+        SENTRY_URL: ${SENTRY_URL:-http://localhost:8000}
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
+      secrets:
+        - sentry_auth_token
+    environment:
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      BETTER_AUTH_URL: http://localhost:3000
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    # The DSN GlitchTip shows uses localhost:8000, which is right for the browser. Inside this
+    # container GlitchTip is at glitchtip:8000, so the server's copy is rewritten before starting.
+    command:
+      - sh
+      - -c
+      - >-
+        SENTRY_DSN="$$(echo "$$SENTRY_DSN" | sed 's#@localhost:8000/#@glitchtip:8000/#')"
+        exec node --import ./instrumentation/instrumentation.ts server/index.mjs
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - app-data:/data
+    mem_limit: 512m
+    restart: unless-stopped
+
+  glitchtip:
+    image: glitchtip/glitchtip:6
+    depends_on:
+      - glitchtip-postgres
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@glitchtip-postgres:5432/postgres
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-local-dev-only-not-for-production}
+      GLITCHTIP_DOMAIN: http://localhost:8000
+      DEFAULT_FROM_EMAIL: glitchtip@localhost
+      EMAIL_URL: consolemail://
+      # Web server and background worker in one process, with Postgres as the task queue and
+      # cache instead of Valkey. Features this app doesn't use are switched off to save memory.
+      SERVER_ROLE: all_in_one
+      VALKEY_URL: ""
+      GLITCHTIP_ENABLE_UPTIME: "False"
+      GLITCHTIP_ENABLE_LOGS: "False"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - glitchtip-uploads:/code/uploads
+    mem_limit: 768m
+    restart: unless-stopped
+
+  glitchtip-postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - glitchtip-pg-data:/var/lib/postgresql
+    mem_limit: 384m
+    restart: unless-stopped
+
+secrets:
+  sentry_auth_token:
+    environment: SENTRY_AUTH_TOKEN
+
+volumes:
+  app-data:
+  glitchtip-uploads:
+  glitchtip-pg-data:
