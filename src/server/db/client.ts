@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema';
+import { addLogBreadcrumb } from '../utils/sentry-helpers';
 
 // Paths are relative to where the server is started: the project root for both `npm run dev` and `npm run preview`.
 const DATABASE_PATH = resolve(process.env['DATABASE_PATH'] ?? 'data/anime.db');
@@ -17,6 +18,7 @@ function createDb() {
   const db = drizzle(sqlite, { schema });
   // Bring the schema up to date on first use, so a fresh checkout needs no separate migrate step.
   migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  addLogBreadcrumb('info', 'db', 'Database initialized and migrations applied', { path: DATABASE_PATH });
   return db;
 }
 

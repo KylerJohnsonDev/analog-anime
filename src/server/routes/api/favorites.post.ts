@@ -2,6 +2,8 @@ import { createError, defineEventHandler, readBody, setResponseStatus } from 'h3
 import { requireUser } from '../../auth';
 import { useDb } from '../../db/client';
 import { favorites, NewFavorite } from '../../db/schema';
+import { withSpan, addLogBreadcrumb } from '../../utils/sentry-helpers';
+import * as Sentry from '@sentry/node';
 
 function isNullableNumber(value: unknown): value is number | null {
   return value === null || (typeof value === 'number' && Number.isFinite(value));
@@ -34,15 +36,27 @@ function parseFavorite(body: unknown): Omit<NewFavorite, 'userId' | 'addedAt'> |
 export default defineEventHandler(async (event) => {
   const user = await requireUser(event);
   const favorite = parseFavorite(await readBody(event));
-  if (!favorite) throw createError({ statusCode: 400, statusMessage: 'Invalid anime' });
+  if (!favorite) {
+    addLogBreadcrumb('warning', 'favorites', 'Invalid favorite body received', { userId: user.id });
+    throw createError({ statusCode: 400, statusMessage: 'Invalid anime' });
+  }
 
-  // Saving an existing favorite refreshes its details but keeps its original position in the list.
-  const [{ userId: _userId, ...saved }] = useDb()
-    .insert(favorites)
-    .values({ ...favorite, userId: user.id })
-    .onConflictDoUpdate({ target: [favorites.userId, favorites.malId], set: favorite })
-    .returning()
-    .all();
+  const saved = await withSpan('db', 'favorites.add', async (span) => {
+    Sentry.setUser({ id: user.id });
+    span.setAttribute('anime.malId', favorite.malId);
+    span.setAttribute('anime.title', favorite.title);
+
+    // Saving an existing favorite refreshes its details but keeps its original position in the list.
+    const [{ userId: _userId, ...result }] = useDb()
+      .insert(favorites)
+      .values({ ...favorite, userId: user.id })
+      .onConflictDoUpdate({ target: [favorites.userId, favorites.malId], set: favorite })
+      .returning()
+      .all();
+
+    addLogBreadcrumb('info', 'favorites', 'Favorite added', { userId: user.id, malId: favorite.malId });
+    return result;
+  });
 
   setResponseStatus(event, 201);
   return saved;
