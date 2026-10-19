@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { Router, withInMemoryScrolling } from '@angular/router';
-import { provideFileRouter, requestContextInterceptor } from '@analogjs/router';
+import { provideFileRouter, requestContextInterceptor, withExtraRoutes } from '@analogjs/router';
 import { provideZard } from '@/shared/core/provider/providezard';
 import * as Sentry from '@sentry/angular';
 
@@ -18,6 +18,13 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideFileRouter(
+      withExtraRoutes([
+        {
+          path: 'anime/:malId',
+          outlet: 'details',
+          loadComponent: () => import('./shared/anime/anime-side-panel.component'),
+        },
+      ]),
       withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' })
     ),
     provideHttpClient(

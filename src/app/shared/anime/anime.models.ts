@@ -97,9 +97,23 @@ export interface AnimeNews {
   author: string;
 }
 
+export interface AnimeProfile extends AnimeEntry {
+  url: string;
+  titleEnglish?: string | null;
+  status?: string | null;
+  rating?: string | null;
+  year?: number | null;
+  rank?: number | null;
+  duration?: string | null;
+  studios?: string[];
+  genres?: string[];
+}
+
 /** Served by `/api/anime/:malId/details`. Each part fails independently, flagged in `errors`. */
 export interface AnimeDetails {
+  anime?: AnimeProfile | null;
   synopsis: string | null;
   news: AnimeNews[];
   errors: { synopsis: boolean; news: boolean };
 }
+

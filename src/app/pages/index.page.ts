@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowDown, lucideArrowRight, lucideCheck, lucideChevronRight, lucideCompass, lucideExternalLink, lucideHeart, lucideSearch, lucideSparkles } from '@ng-icons/lucide';
 import { AnimeCardComponent } from '@/shared/anime/anime-card.component';
+import { AnimePanelService } from '@/shared/anime/anime-panel.service';
 import { AnimeEntry, AnimeRecommendation, animeUrl } from '@/shared/anime/anime.models';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -76,7 +77,7 @@ export const routeMeta: RouteMeta = {
           } @else if (filteredAnime().length) {
             <div class="anime-grid">
               @for (anime of filteredAnime(); track anime.malId; let i = $index) {
-                <app-anime-card [anime]="anime" [rank]="i + 1" [eager]="i < 4" />
+                <app-anime-card [anime]="anime" [rank]="i + 1" [eager]="i < 4" [openInPanel]="true" />
               }
             </div>
           } @else {
@@ -132,6 +133,7 @@ export const routeMeta: RouteMeta = {
 export default class HomePage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly panel = inject(AnimePanelService);
   readonly topAnime = signal<AnimeEntry[]>([]);
   readonly recommendations = signal<AnimeRecommendation[]>([]);
   readonly loading = signal(true);
@@ -140,11 +142,17 @@ export default class HomePage implements OnInit {
   readonly recommendationsError = signal(false);
   readonly query = signal('');
   readonly placeholders = [1, 2, 3, 4, 5, 6, 7, 8];
-  readonly filteredAnime = () => {
+  readonly filteredAnime = computed(() => {
     const term = this.query().trim().toLocaleLowerCase();
     if (!term) return this.topAnime();
     return this.topAnime().filter((anime) => anime.title.toLocaleLowerCase().includes(term));
-  };
+  });
+
+  constructor() {
+    effect(() => {
+      this.panel.setEntries(this.filteredAnime());
+    });
+  }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {

@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, ElementRef, inject, linkedSignal, PLATFORM_ID, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, linkedSignal, PLATFORM_ID, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Params, Router } from '@angular/router';
 import { RouteMeta } from '@analogjs/router';
@@ -8,6 +8,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowRight, lucideChevronLeft, lucideChevronRight, lucideCompass, lucideSearch, lucideX } from '@ng-icons/lucide';
 import { catchError, combineLatest, distinctUntilChanged, map, of, startWith, Subject, switchMap, tap } from 'rxjs';
 import { AnimeCardComponent } from '@/shared/anime/anime-card.component';
+import { AnimePanelService } from '@/shared/anime/anime-panel.service';
 import {
   ANIME_RATINGS,
   ANIME_STATUSES,
@@ -170,7 +171,7 @@ function describeError(error: unknown): string {
           } @else if (results().length) {
             <div class="anime-grid browse-grid">
               @for (anime of results(); track anime.malId; let i = $index) {
-                <app-anime-card [anime]="anime" [eager]="i < 5" />
+                <app-anime-card [anime]="anime" [eager]="i < 5" [openInPanel]="true" />
               }
             </div>
 
@@ -200,6 +201,7 @@ export default class BrowsePage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly jikan = inject(JikanService);
+  private readonly panel = inject(AnimePanelService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly resultsTop = viewChild<ElementRef<HTMLElement>>('resultsTop');
   private readonly retry$ = new Subject<void>();
@@ -226,6 +228,10 @@ export default class BrowsePage {
   });
 
   constructor() {
+    effect(() => {
+      this.panel.setEntries(this.results());
+    });
+
     if (!this.isBrowser) return;
     this.loadGenres();
 

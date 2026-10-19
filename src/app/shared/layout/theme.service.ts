@@ -12,7 +12,7 @@ export class ThemeService {
   constructor() {
     if (!this.isBrowser) return;
     const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    this.apply(savedTheme ? savedTheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+    this.apply(savedTheme ? savedTheme === 'dark' : Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches));
   }
 
   toggle(): void {

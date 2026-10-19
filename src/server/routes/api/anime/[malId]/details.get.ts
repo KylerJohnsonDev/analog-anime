@@ -14,20 +14,59 @@ interface AnimeNews {
   author: string;
 }
 
+interface JikanAnimeResponse {
+  malId: number;
+  url?: string;
+  title: string;
+  titleEnglish?: string | null;
+  imageUrl?: string | null;
+  score?: number | null;
+  episodes?: number | null;
+  type?: string | null;
+  status?: string | null;
+  rating?: string | null;
+  year?: number | null;
+  rank?: number | null;
+  duration?: string | null;
+  synopsis?: string | null;
+  studios?: { malId: number; name: string }[];
+  genres?: { malId: number; name: string }[];
+}
+
 const NEWS_COUNT = 3;
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 const FOUR_HOURS_IN_SECONDS = 60 * 60 * 4;
 
-// Synopses rarely change, so each is fetched at most once a day; news at most every 4 hours. As with the
-// home feed, a failed fetch isn't cached, and stale entries are served while fresh ones load.
-const getSynopsis = defineCachedFunction(
+// Synopses and anime metadata rarely change, so each is fetched at most once a day; news at most every 4 hours.
+// As with the home feed, a failed fetch isn't cached, and stale entries are served while fresh ones load.
+const getAnimeDetail = defineCachedFunction(
   async (malId: number) => withSpan('http.client', 'jikan.fetchAnimeDetails', async (span) => {
     span.setAttribute('anime.malId', malId);
-    const synopsis = (await fetchAnimeApi<{ synopsis: string | null }>(`/anime/${malId}`)).synopsis ?? null;
+    const data = await fetchAnimeApi<JikanAnimeResponse>(`/anime/${malId}`);
+    const synopsis = data.synopsis ?? null;
     span.setAttribute('anime.hasSynopsis', synopsis !== null);
-    return synopsis;
+    return {
+      synopsis,
+      anime: {
+        malId: data.malId ?? malId,
+        url: data.url ?? `https://myanimelist.net/anime/${malId}`,
+        title: data.title,
+        titleEnglish: data.titleEnglish ?? null,
+        imageUrl: data.imageUrl ?? null,
+        score: data.score ?? null,
+        episodes: data.episodes ?? null,
+        type: data.type ?? null,
+        status: data.status ?? null,
+        rating: data.rating ?? null,
+        year: data.year ?? null,
+        rank: data.rank ?? null,
+        duration: data.duration ?? null,
+        studios: (data.studios ?? []).map((s) => s.name),
+        genres: (data.genres ?? []).map((g) => g.name),
+      },
+    };
   }),
-  { name: 'anime-synopsis', getKey: (malId: number) => String(malId), maxAge: ONE_DAY_IN_SECONDS },
+  { name: 'anime-detail-v2', getKey: (malId: number) => String(malId), maxAge: ONE_DAY_IN_SECONDS },
 );
 
 // jikan-edge lists news newest first.
@@ -48,11 +87,11 @@ export default defineEventHandler(async (event) => {
     const malId = Number(getRouterParam(event, 'malId'));
     if (!Number.isInteger(malId) || malId <= 0) throw createError({ statusCode: 400, statusMessage: 'Invalid anime id' });
 
-    const [synopsis, news] = await Promise.allSettled([getSynopsis(malId), getNews(malId)]);
+    const [detail, news] = await Promise.allSettled([getAnimeDetail(malId), getNews(malId)]);
 
-    if (synopsis.status === 'rejected') {
-      addLogBreadcrumb('error', 'anime-details', 'Failed to fetch synopsis', { malId, error: String(synopsis.reason) });
-      Sentry.captureException(synopsis.reason);
+    if (detail.status === 'rejected') {
+      addLogBreadcrumb('error', 'anime-details', 'Failed to fetch synopsis', { malId, error: String(detail.reason) });
+      Sentry.captureException(detail.reason);
     }
     if (news.status === 'rejected') {
       addLogBreadcrumb('error', 'anime-details', 'Failed to fetch news', { malId, error: String(news.reason) });
@@ -60,12 +99,14 @@ export default defineEventHandler(async (event) => {
     }
 
     return {
-      synopsis: synopsis.status === 'fulfilled' ? synopsis.value : null,
+      anime: detail.status === 'fulfilled' ? detail.value.anime : null,
+      synopsis: detail.status === 'fulfilled' ? detail.value.synopsis : null,
       news: news.status === 'fulfilled' ? news.value : [],
       errors: {
-        synopsis: synopsis.status === 'rejected',
+        synopsis: detail.status === 'rejected',
         news: news.status === 'rejected',
       },
     };
   });
 });
+

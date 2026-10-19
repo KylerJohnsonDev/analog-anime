@@ -536,3 +536,398 @@ a.news-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px;
   .site-footer { grid-template-columns: 1fr; justify-items: center; }
   .data-credit { text-align: center; }
 }
+
+/* Responsive Side Panel (Auxiliary Route) */
+.side-panel-overlay {
+  --panel-width: min(640px, 92dvw);
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: oklch(0.12 0.03 280 / 0.56);
+  backdrop-filter: blur(4px);
+  animation: fade-panel-backdrop 0.2s ease-out;
+}
+
+@keyframes fade-panel-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.side-panel-sheet {
+  width: var(--panel-width);
+  height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--background);
+  color: var(--foreground);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  outline: none;
+  animation: slide-panel-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-panel-overlay,
+  .side-panel-sheet {
+    animation: none;
+  }
+}
+
+@keyframes slide-panel-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.side-panel-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-nav-btn {
+  height: 34px;
+  padding: 0 11px;
+  font-size: var(--text-sm);
+}
+
+.panel-nav-count {
+  min-width: 48px;
+  text-align: center;
+  color: var(--app-muted-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-close-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.panel-close-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.panel-close-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.side-panel-body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+  padding: 28px 24px 40px;
+}
+
+/* Shared Anime Detail View (used in Side Panel and /anime/:malId page) */
+.anime-detail-view {
+  container: detail-view / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  min-width: 0;
+}
+
+.detail-hero {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 28px 36px;
+  align-items: start;
+  min-width: 0;
+}
+
+.detail-poster-col {
+  width: 100%;
+}
+
+.detail-poster-wrap {
+  height: auto;
+  aspect-ratio: 0.72;
+}
+
+.detail-favorite-toggle {
+  opacity: 1;
+  transform: none;
+}
+
+.detail-synopsis,
+.detail-news {
+  grid-area: auto;
+}
+
+.detail-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.detail-action-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.detail-action-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.detail-action-btn ng-icon {
+  font-size: 13px;
+}
+
+.detail-hero .detail-title {
+  margin: 8px 0 6px;
+  font-family: var(--font-sans);
+  font-size: var(--text-4xl);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -1.3px;
+  color: var(--foreground);
+}
+
+.detail-subtitle {
+  margin: 0 0 14px;
+  color: var(--app-muted-text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.detail-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 16px;
+}
+
+.detail-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.detail-score-pill ng-icon {
+  color: var(--chart-5);
+  font-size: 11px;
+}
+
+.detail-Submeta {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: var(--app-muted-text);
+  font-size: var(--text-xs);
+}
+
+.detail-meta-item strong {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.detail-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detail-genre-tag {
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--primary) 12%, var(--background));
+  color: var(--primary);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.detail-title-skeleton {
+  height: 28px;
+  width: 70%;
+  margin: 12px 0;
+}
+
+/* Adapt layout inside narrower containers (such as the side panel or mobile viewports) */
+@container detail-view (max-width: 680px) {
+  .detail-hero {
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 20px;
+  }
+  .detail-hero .detail-title {
+    font-size: var(--text-2xl);
+    letter-spacing: -0.8px;
+  }
+  .detail-news .news-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container detail-view (max-width: 460px) {
+  .detail-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .detail-poster-col {
+    width: 160px;
+  }
+}
+
+/* Standalone Anime Details Page (/anime/:malId) */
+.anime-details-page {
+  padding: 36px 0 48px;
+}
+
+.details-page-nav {
+  margin-bottom: 22px;
+}
+
+.details-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-muted-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.details-back-link:hover {
+  color: var(--primary);
+}
+
+.details-page-card {
+  display: block;
+}
+
+/* Share Toast Notification (Popover API with fallback) */
+.toast-stack {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.share-toast {
+  margin: 0;
+  inset: auto 24px 24px auto;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--foreground);
+  color: var(--background);
+  box-shadow: var(--shadow-xl);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease, display 0.2s ease allow-discrete, overlay 0.2s ease allow-discrete;
+  transition-behavior: allow-discrete;
+}
+
+.share-toast[popover]:is(:popover-open, .\:popover-open),
+.share-toast.is-open {
+  display: inline-flex;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.share-toast + .share-toast {
+  margin-top: 0.75rem;
+}
+
+.toast-icon {
+  color: var(--accent);
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+
+.toast-close {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .side-panel-header {
+    padding: 12px 16px;
+  }
+  .side-panel-body {
+    padding: 20px 16px 32px;
+  }
+  .panel-nav-btn span {
+    display: none;
+  }
+  .share-toast {
+    inset: auto 16px 16px 16px;
+  }
+}
+
