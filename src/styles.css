@@ -39,7 +39,7 @@
   --sidebar-border: oklch(0.9205 0.0086 225.0878);
   --sidebar-ring: oklch(0.6726 0.2904 341.4084);
   --font-sans: Outfit, sans-serif;
-  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-serif: Outfit, sans-serif;
   --font-mono: 'Fira Code', monospace;
   --radius: 0.5rem;
   --shadow-x: 0px;
@@ -111,6 +111,9 @@
 /* Type scale. Small sizes sit 1px above Tailwind's defaults for readability; Zard components
    use the same tokens through text-xs/text-sm, so they scale with the app's own styles. */
 @theme {
+  --font-sans: Outfit, sans-serif;
+  --font-serif: Outfit, sans-serif;
+  --font-mono: 'Fira Code', monospace;
   --text-2xs: 0.75rem;
   --text-2xs--line-height: 1rem;
   --text-xs: 0.8125rem;
@@ -152,9 +155,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: var(--font-sans);
-  --font-serif: var(--font-serif);
-  --font-mono: var(--font-mono);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -174,7 +174,7 @@
 /* Element resets live in the base layer so Tailwind utilities (and Zard components) can override them. */
 @layer base {
   * { box-sizing: border-box; }
-  body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--background); }
+  body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--background); font-family: var(--font-sans); }
   button, input { font: inherit; }
   a { color: inherit; text-decoration: none; }
   ::selection { color: var(--card); background: var(--primary); }
@@ -306,7 +306,7 @@ h1 { margin: 19px 0 15px; font-family: var(--font-sans); font-size: clamp(var(--
 .favorite-synopsis { grid-area: synopsis; display: flex; flex-direction: column; min-width: 0; }
 .favorite-synopsis h2 { margin: 9px 0 16px; font-family: var(--font-sans); font-size: var(--text-4xl); font-weight: 600; line-height: 1.2; letter-spacing: -1.3px; }
 .synopsis-text { display: grid; gap: 12px; max-width: 72ch; }
-.synopsis-text p { color: var(--card-foreground); font-family: var(--font-serif); font-size: var(--text-base); line-height: 1.75; }
+.synopsis-text p { color: var(--card-foreground); font-family: var(--font-sans); font-size: var(--text-base); line-height: 1.75; }
 .synopsis-loading { display: grid; max-width: 72ch; }
 .favorite-more { display: inline-flex; align-items: center; gap: 6px; align-self: start; margin-top: auto; padding-top: 20px; color: var(--primary); font-size: var(--text-sm); font-weight: 600; }
 .favorite-more:hover { text-decoration: underline; }
@@ -349,7 +349,7 @@ a.news-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px;
 .freshness span { width: 5px; height: 5px; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent); }
 .recommendations-header { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin: 18px 0 27px; }
 .recommendations-header h2 { margin: 0; font-size: var(--text-5xl); letter-spacing: -1.7px; line-height: 1.13; }
-.recommendations-header h2 em { color: var(--primary); font-family: var(--font-serif); font-weight: 400; }
+.recommendations-header h2 em { color: var(--primary); font-family: var(--font-sans); font-weight: 400; }
 .recommendations-header > p { max-width: 380px; padding-bottom: 3px; color: var(--app-muted-text); font-size: var(--text-base); line-height: 1.75; }
 .recommendation-list { container: rec-list / inline-size; }
 /* Two columns only when each card can be at least 480px wide; otherwise one full-width column. */
@@ -363,8 +363,8 @@ a.news-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px;
 .pair-plus { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; background: var(--muted); color: var(--app-muted-text); font-size: 13px; }
 .rec-arrow { position: absolute; right: 2px; top: 50%; display: grid; place-items: center; width: 28px; height: 28px; transform: translateY(-50%); border: 1px solid var(--border); border-radius: 50%; color: var(--app-muted-text); font-size: 13px; }
 .rec-quote { position: relative; flex: 1; display: flex; flex-direction: column; padding: 18px 0 0; }
-.quote-mark { position: absolute; top: 6px; right: 2px; color: var(--border); font-family: var(--font-serif); font-size: 44px; line-height: 1; }
-.rec-quote > p { display: -webkit-box; overflow: hidden; margin: 0 28px 16px 0; color: var(--card-foreground); font-family: var(--font-serif); font-size: var(--text-base); line-height: 1.6; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.quote-mark { position: absolute; top: 6px; right: 2px; color: var(--border); font-family: var(--font-sans); font-size: 44px; line-height: 1; }
+.rec-quote > p { display: -webkit-box; overflow: hidden; margin: 0 28px 16px 0; color: var(--card-foreground); font-family: var(--font-sans); font-size: var(--text-base); line-height: 1.6; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .rec-byline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: auto; color: var(--app-muted-text); font-size: var(--text-sm); }
 .rec-byline a { display: inline-flex; align-items: center; gap: 3px; color: var(--foreground); font-weight: 700; }
 .rec-byline a ng-icon { font-size: 12px; }
@@ -562,6 +562,7 @@ a.news-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px;
   grid-template-rows: auto 1fr;
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow-2xl);
   overflow: hidden;
@@ -651,6 +652,7 @@ a.news-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px;
   grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   min-width: 0;
+  font-family: var(--font-sans);
 }
 
 .detail-hero {
